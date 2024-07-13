@@ -1,3 +1,7 @@
+"""
+RSA is a public-key crypto system used for secure data transmission and digital signatures.
+It's based on the practical difficulty of factoring the product of two large prime numbers.
+"""
 import random
 
 from elgamal_key_exchange import mod_inverse
