@@ -40,6 +40,12 @@ def point_add(P1, P2):
     y3 = (lam * (P1[0] - x3) - P1[1]) % p
     return (x3, y3)
 
+"""
+This uses the double-and-add algorithm, an efficient method for scalar multiplication
+Scalar multiplication involves computing the product of a scalar (integer) k and a point P on an elliptic curve 
+to obtain another point Q on the curve, denoted as Q=kP This operation is analogous to repeated addition in the 
+context of elliptic curves.
+"""
 def scalar_mult(k, P):
     Q = None
     for i in range(256):
@@ -48,12 +54,23 @@ def scalar_mult(k, P):
         P = point_add(P, P)
     return Q
 
+
+"""
+Generate an ECC key pair
+"""
 def generate_keypair():
+    # Chooses a random integer as the private key
     private_key = random.randint(1, n - 1)
+
+    # Computes the public key by multiplying the generator point (Gx, Gy) by the private key.
     public_key = scalar_mult(private_key, (Gx, Gy))
     return private_key, public_key
 
+"""
+Encrypt a message (in this case, the SALSA20 key) using ECC El-Gamal encryption
+"""
 def encrypt_key(public_key, plaintext):
+    # Chooses a random k for this encryption.
     k = random.randint(1, n - 1)
     C1 = scalar_mult(k, (Gx, Gy))
     S = scalar_mult(k, public_key)
