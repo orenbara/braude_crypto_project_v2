@@ -4,6 +4,7 @@ This ensures that the encrypted SALSA20 key (which is encrypted using ECC El-Gam
 and hasn't been tampered with during transmission.
 This adds an extra layer of security and authenticity to your secure file exchange system.
 """
+import hashlib
 import random
 
 from elgamal_key_exchange import mod_inverse
@@ -63,21 +64,20 @@ def generate_rsa_keypair(bits=2048):
 Create a digital signature for a message using the RSA private key.
 """
 def rsa_sign(private_key, message):
-
     n, d = private_key
 
-    # Converts the message to an integer, In big-endian order,
-    # the most significant byte is at the beginning of the byte array.
-    # This conversion is necessary because RSA operations are defined on integers modulo n.
-    # By converting the message to an integer, we can apply the RSA math (m^d mod n) for signing.
-    message_int = int.from_bytes(message, 'big')
+    # Hash the message using SHA-1 - we get the MD1 (Message Digest)
+    # hash function has many benefits like fix sized, improved security, but it is not mandatory
+    hash_object = hashlib.sha1(message)
+    hashed_message = hash_object.digest()
 
-    ### Computes the signature as message^d mod n ###
+    # Convert the hashed message from bytes to an integer - so we could do math
+    message_int = int.from_bytes(hashed_message, 'big')
+
+    # Compute the signature as message^d mod n (pow does modulo when provided with 3 params) - this is the encryption
     signature = pow(message_int, d, n)
 
-    ### Returns the signature as bytes ###
-    # Why add 7 before dividing? This is a trick to round up to the nearest byte.
-    # If we didn't add 7, we might not allocate enough bytes for signatures that aren't exactly divisible by 8 bits.
+    # Return the signature as bytes (playing with the numbers to make sure there is no overflow)
     return signature.to_bytes((signature.bit_length() + 7) // 8, 'big')
 
 
@@ -86,13 +86,18 @@ Verify an RSA signature using the public key.
 """
 def rsa_verify(public_key, message, signature):
     n, e = public_key
-    # Convert the message and signature to integers.
-    message_int = int.from_bytes(message, 'big')
+
+    # Hash the message using SHA-1 - same as in the signing, the receiver want's the same MD
+    hash_object = hashlib.sha1(message)
+    hashed_message = hash_object.digest()
+
+    # Convert the hashed message and signature to integers
+    message_int = int.from_bytes(hashed_message, 'big')
     signature_int = int.from_bytes(signature, 'big')
 
-    # Computes signature^e mod n.
-    # Python's pow() function with three arguments is optimized for modular exponentiation.
+    # Compute signature^e mod n - this is the decryption part
     decrypted = pow(signature_int, e, n)
 
-    # Checks if the result matches the original message.
+    # Check if the result matches the hashed message, if the private key which the sender used, and the publickey
+    # which the receiver uses match then using the SHA1 on the same message will result it
     return decrypted == message_int
