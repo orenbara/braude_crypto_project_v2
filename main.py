@@ -14,21 +14,37 @@ def main():
         rsa_public_key, rsa_private_key = generate_rsa_keypair()
         print("RSA keypair generated successfully.")
 
+        """
         print("Generating EC keypair...")
         ec_private_key, ec_public_key = generate_keypair()
         print(f"EC private key: {ec_private_key}")
         print(f"EC public key: {ec_public_key}")
         print("EC keypair generated successfully.")
+       
+       
 
         print("Generating SALSA20 key...")
         salsa_key = os.urandom(32)
         print(f"SALSA20 key: {salsa_key.hex()}")
         print("SALSA20 key generated successfully.")
-
+        
+        
         print("Encrypting SALSA20 key with EC El-Gamal...")
         encrypted_key = encrypt_key(ec_public_key, int.from_bytes(salsa_key, 'big'))
         print(f"Encrypted key: {encrypted_key}")
         print("SALSA20 key encrypted successfully.")
+        """
+
+        from ecc.curve import Curve25519, P256, M383
+        from ecc.key import gen_keypair
+        from ecc.cipher import ElGamal
+
+        ec_private_key, ec_public_key = gen_keypair(M383)
+        cipher_elg = ElGamal(M383)
+        salsa_key = os.urandom(32)
+
+        C1, C2 = cipher_elg.encrypt(salsa_key, ec_public_key)
+        encrypted_key = (C1, C2)
 
         print("Signing the encrypted key with RSA...")
         signature = rsa_sign(rsa_private_key, str(encrypted_key).encode())
@@ -51,13 +67,14 @@ def main():
             print("Signature verified successfully")
 
             print("Decrypting SALSA20 key...")
-            decrypted_key = decrypt_key(ec_private_key, encrypted_key)
-            recovered_salsa_key = decrypted_key.to_bytes(32, 'big')
-            print(f"Recovered SALSA20 key: {recovered_salsa_key.hex()}")
+            #decrypted_key = decrypt_key(ec_private_key, encrypted_key)
+            decrypted_key = cipher_elg.decrypt(ec_private_key, C1, C2)
+            #recovered_salsa_key = decrypted_key.to_bytes(32, 'big')
+            print(f"Recovered SALSA20 key: {decrypted_key.hex()}")
             print("SALSA20 key decrypted successfully.")
 
             print("Decrypting file...")
-            decrypt_file('encrypted.bin', 'decrypted.txt', recovered_salsa_key)
+            decrypt_file('encrypted.bin', 'decrypted.txt', decrypted_key)
             print("File decrypted successfully")
 
             # Verify the decrypted content
